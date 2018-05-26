@@ -90,6 +90,8 @@ molecule_structure=generateSMIRNOFFStructureRDK(lig_rdk)
 
 
 
+print("saving ligand topology")
+
 molecule_structure.save("ligand.pdb",overwrite=True)
 molecule_structure.save("ligand.prmtop", overwrite=True)
 
@@ -103,6 +105,11 @@ molecule_structure.save("ligand.prmtop", overwrite=True)
 #f=open("system_solvated.pdb","w")
 #app.PDBFile.writeFile(fixer.topology, fixer.positions, f, True)
 #f.close()
+
+print("loading water")
+water=parmed.load("../water/water.prmtop",pdb="../water/water.pdb")
+print(water)
+
 
 proteinpdb = app.PDBFile('system_solvated.pdb')
 
