@@ -1,0 +1,5 @@
+source oldFF/leaprc.ff99SBildn
+water=loadPdb water.pdb
+savePdb water system_leaped.pdb
+saveamberparm water water.prmtop water.inpcrd
+quit
