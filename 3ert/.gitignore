@@ -3,3 +3,5 @@ __pycache__
 system.prmtop
 ligand.prmtop
 *.dcd
+system_complex.prmtop
+system_complex.pdb
