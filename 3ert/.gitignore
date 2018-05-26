@@ -2,3 +2,4 @@ __init__.py
 __pycache__
 system.prmtop
 ligand.prmtop
+*.dcd
