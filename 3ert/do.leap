@@ -1,0 +1,9 @@
+source oldFF/leaprc.ff99SBildn
+loadOff ions94.lib
+system=loadPdb 3ert_amber.pdb
+addIons system Na+ 0
+addIons system Cl- 0
+solvateBox system TIP3PBOX 18.0 0.65
+savePdb system system.pdb
+saveamberparm system system.prmtop system.inpcrd
+quit

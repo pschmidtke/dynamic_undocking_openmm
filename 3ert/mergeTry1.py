@@ -77,13 +77,13 @@ def generateSMIRNOFFStructureRDK(molecule):
 	return molecule_structure
 
 
-lig_rdk=Chem.MolFromMol2File('ligand.mol2',sanitize=True)
+lig_rdk=Chem.MolFromMol2File('ligand_centered.mol2',sanitize=False)
 
 
 #m=Chem.MolFromSmiles('CC\C(=C(/c1ccc(O)cc1)c1ccc(OCCN(C)C)cc1)c1ccccc1',sanitize=True)
 #lig_rdk=Chem.AddHs(m)
 #AllChem.EmbedMolecule(lig_rdk, AllChem.ETKDG())
-lig_rdk.SetProp('_Name','mymol')
+lig_rdk.SetProp('_Name','LIG')
 
 molecule_structure=generateSMIRNOFFStructureRDK(lig_rdk)
 
@@ -106,26 +106,27 @@ molecule_structure.save("ligand.prmtop", overwrite=True)
 #app.PDBFile.writeFile(fixer.topology, fixer.positions, f, True)
 #f.close()
 
-print("loading water")
-water=parmed.load("../water/water.prmtop",pdb="../water/water.pdb")
-print(water)
+print("loading system")
+receptor=parmed.load_file("system.prmtop",xyz="system.inpcrd")
 
 
-proteinpdb = app.PDBFile('system_solvated.pdb')
+#proteinpdb = app.PDBFile('system_solvated.pdb')
 
 #parmedpdb=parmed.load_file('1uyd.pdb')
 
-protein_structure = utils.generateProteinStructure(proteinpdb)
+#protein_structure = utils.generateProteinStructure(proteinpdb)
+print("merge structures")
+structure = utils.mergeStructure( molecule_structure,receptor)
+print("save structures")
+structure.save("system_complex.pdb",overwrite=True)
+structure.save("system_complex.prmtop", overwrite=True)
 
-structure = utils.mergeStructure(protein_structure, molecule_structure)
-structure.save("system.pdb",overwrite=True)
-structure.save("system.prmtop", overwrite=True)
 
-
-
+print("create system")
 #system=protein_structure.createSystem(constraints=None, rigidWater=None,flexibleConstraints=None)
-system=structure.createSystem(constraints=None)
+system=structure.createSystem(nonbondedMethod=app.PME,nonbondedCutoff=8*unit.angstrom)
 
+print("setting up md")
 integrator = openmm.LangevinIntegrator(300*unit.kelvin,1/unit.picosecond, 0.002*unit.picoseconds)
 simulation = app.Simulation(structure.topology, system, integrator)
 simulation.context.setPositions(structure.positions)	
