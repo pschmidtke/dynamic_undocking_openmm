@@ -1,0 +1,10 @@
+
+*.dcd
+
+*.pyc
+
+3ert/__init__.py
+
+3ert/system_complex.prmtop
+
+chunk2_test/fixed.pdb
