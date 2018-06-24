@@ -130,10 +130,21 @@ protein_system = forcefield.createSystem(protein.topology)
 protein_pmd = parmed.openmm.load_topology(protein.topology, protein_system, protein.positions)
 print(protein_pmd)
 
+#pdb = app.PDBFile(protein_file) #openmm read-in pdb
+#forcefield = app.ForceField('amber99sb.xml', 'tip3p.xml')   #you can of course use other forcefields.xml files from openmm
+#protein_system = forcefield.createSystem(pdb.topology, nonbondedMethod=app.NoCutoff, nonbondedCutoff=1*unit.nanometer, constraints=app.HBonds)
+#protein_pmd = parmed.openmm.load_topology(pdb.topology, protein_system, pdb.positions)
+
+protein_pmd.save("protein_prepared.pdb",overwrite=True)
+#protein_pmd.save("protein_prepared.prmtop", overwrite=True)
+
+
 
 prot_lig_pmd = protein_pmd + ligand_pmd
 
-prot_lig_pmd.save("complex.pdb",overwrite=True)
+#prot_lig_pmd.save("complex.pdb",overwrite=True)
+#prot_lig_pmd.save("complex.prmtop", overwrite=True)
+
 
 print("Solvation")
 fixer = PDBFixer("complex.pdb")
@@ -161,6 +172,13 @@ ions_system = forcefield.createSystem(ions.topology)
 
 ions_pmd = parmed.openmm.load_topology(ions.topology, ions_system, ions.positions)
 print("Parametrizing ions done")
+
+
+prot_lig_ion_pmd = protein_pmd + ligand_pmd + ions_pmd
+
+#prot_lig_pmd.save("complex_ions.pdb",overwrite=True)
+#prot_lig_pmd.save("complex_ions.prmtop", overwrite=True)
+
 print("Parametrizing solvent")
 
 solvent = complex["(:HOH)"]
@@ -178,20 +196,16 @@ solvent_pmd.positions = solvent.positions
 print("Parametrizing solvent done")
 
 
-#proteinpdb = app.PDBFile('system_solvated.pdb')
-
-#parmedpdb=parmed.load_file('1uyd.pdb')
-
-#protein_structure = utils.generateProteinStructure(proteinpdb)
 print("merge structures")
 
-combined_pmd = prot_lig_pmd + ions_pmd + solvent_pmd
-combined_pmd.write_pdb("test.pdb",renumber=False)
+combined_pmd = protein_pmd + ligand_pmd + ions_pmd + solvent_pmd
+#combined_pmd.write_pdb("system_complex.pdb",renumber=False)
+combined_pmd.save("system_complex.prmtop", overwrite=True)
 print("merge done")
 combined_pmd.box_vectors = complex.box_vectors
-print(complex.box_vectors)
+#print(complex.box_vectors)
 
-combined_pmd.save("system_complex.prmtop", overwrite=True)
+
 
 combined_system = combined_pmd.createSystem(nonbondedMethod=app.CutoffPeriodic, 
                                nonbondedCutoff=1*unit.nanometer, constraints=app.AllBonds)

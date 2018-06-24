@@ -175,10 +175,13 @@ print("Parametrizing solvent done")
 print("merge structures")
 
 combined_pmd = prot_lig_pmd + ions_pmd + solvent_pmd
+
 combined_pmd.box_vectors = complex.box_vectors
 print(complex.box_vectors)
 
 combined_pmd.save("system_complex.prmtop", overwrite=True)
+
+
 
 combined_system = combined_pmd.createSystem(nonbondedMethod=app.CutoffPeriodic, 
                                nonbondedCutoff=1*unit.nanometer, constraints=app.AllBonds)
