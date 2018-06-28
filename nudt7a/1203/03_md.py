@@ -4,6 +4,7 @@ import simtk.unit as u
 #!#from mdtraj.reporters import HDF5Reporter
 import sys
 import pickle
+import duck
 
 ###############################################################################
 

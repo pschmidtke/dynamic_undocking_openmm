@@ -16,8 +16,8 @@ keyInteraction = [keyInteraction_ind_mol2[0]-1, keyInteraction_ind_mol2[1]-1]
 # Platform definition
 
 platform = mm.Platform_getPlatformByName("CPU")
-#platformProperties = {}
-#platformProperties['CudaPrecision'] = 'mixed'
+platformProperties = {}
+#platformProperties['OpenCLPrecision'] = 'mixed'
 #platformProperties['CudaDeviceIndex'] = '0'
 
 
@@ -55,7 +55,7 @@ integrator = mm.VerletIntegrator(1*u.femtosecond)
 
 # Define Simulation
 
-simulation = app.Simulation(combined_pmd.topology, system, integrator, platform)
+simulation = app.Simulation(combined_pmd.topology, system, integrator, platform,platformProperties)
 simulation.context.setPositions(combined_pmd.positions)
 
 # Minimizing energy
@@ -90,7 +90,7 @@ integrator = mm.LangevinIntegrator(300*u.kelvin, 4/u.picosecond, 0.002*u.picosec
 
 # Define Simulation
 
-simulation = app.Simulation(combined_pmd.topology, system, integrator, platform)
+simulation = app.Simulation(combined_pmd.topology, system, integrator, platform,platformProperties)
 simulation.context.setPositions(positions) #changing coordintes to minimized   
 
 # Reporters
@@ -129,7 +129,7 @@ integrator = mm.LangevinIntegrator(300*u.kelvin, 4/u.picosecond, 0.002*u.picosec
 
 # Define simulation
 
-simulation = app.Simulation(combined_pmd.topology, system, integrator, platform)
+simulation = app.Simulation(combined_pmd.topology, system, integrator, platform,platformProperties)
 simulation.context.setPositions(positions)
 simulation.context.setVelocities(velocities)
 
