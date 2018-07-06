@@ -10,14 +10,17 @@ import duck #set up pythonpath first to include duck.py to get all helper functi
 #################### Sym parameters ###########################################
 ###############################################################################
 
-keyInteraction_ind_mol2 = [453, 1329]
-keyInteraction = [keyInteraction_ind_mol2[0]-1, keyInteraction_ind_mol2[1]-1]
+
 
 # Platform definition
 
-platform = mm.Platform_getPlatformByName("CPU")
+platform = mm.Platform_getPlatformByName("OpenCL")
+
+
 platformProperties = {}
-#platformProperties['OpenCLPrecision'] = 'mixed'
+platformProperties['OpenCLPrecision'] = 'mixed'
+#platformProperties['UseCpuPme'] = 'false'
+#platformProperties['DisablePmeStream'] = 'true'
 #platformProperties['CudaDeviceIndex'] = '0'
 
 
@@ -26,8 +29,28 @@ platformProperties = {}
 print("loading pickle")
 pickle_in=open('complex_system.pickle', 'rb')
 combined_pmd = pickle.load(pickle_in)[0]
-print(dir(combined_pmd))
+combined_pmd.symmetry=None
 pickle_in.close()
+
+
+resnumber="29"
+atomname="O"
+distance="3.0"
+
+keyInteraction=duck.getAtomSerialFromAmberMask(combined_pmd,resnumber,atomname,distance)
+print(keyInteraction)
+#print("selecting ligand atom index ")
+#lig_sel=parmed.amber.mask.AmberMask(combined_pmd,"(((:29)&(@O))<@3.0) & (:LIG & (@N=|@O=))")
+##lig_idx=[x for x in lig_sel.Selected() ]
+#print("selecting protein atom index ")
+#rec_sel=parmed.amber.mask.AmberMask(combined_pmd,"((:29)&(@O))")
+#rec_idx=[x for x in rec_sel.Selected() ]
+
+#if(len(lig_idx)>1 or len(rec_idx)>1) :
+#	sys.exit("The reaction coordinate selection failed here, please consider setting it by hand")
+
+#keyInteraction = [lig_idx[0], rec_idx[0]]
+#sys.exit()
 
 ##################
 ##################
@@ -58,6 +81,12 @@ integrator = mm.VerletIntegrator(1*u.femtosecond)
 simulation = app.Simulation(combined_pmd.topology, system, integrator, platform,platformProperties)
 simulation.context.setPositions(combined_pmd.positions)
 
+print(simulation.context.getPlatform().getName())
+for key in simulation.context.getPlatform().getPropertyNames():
+    print(key, simulation.context.getPlatform().getPropertyValue(simulation.context, key))
+
+
+
 # Minimizing energy
 
 simulation.minimizeEnergy(maxIterations=1000)
@@ -78,6 +107,10 @@ app.PDBFile.writeFile(simulation.topology, positions, open('minimisation.pdb', '
 # Define new system
 
 system = combined_pmd.createSystem(nonbondedMethod=app.PME, nonbondedCutoff=9*u.angstrom, constraints=app.HBonds, hydrogenMass=None)
+#system = combined_pmd.createSystem(nonbondedMethod=app.PME)
+
+
+
 
 # Apply force on all havy atoms of chunk and apply restraint for the ligand-chunk distance
 
@@ -96,6 +129,7 @@ simulation.context.setPositions(positions) #changing coordintes to minimized
 # Reporters
 
 simulation.reporters.append(app.StateDataReporter("heating.csv", 1000, time=True, potentialEnergy=True, temperature=True, density=True, remainingTime=True, speed=True, totalSteps=50000))
+simulation.reporters.append(app.DCDReporter("heating.dcd", 1000))
 
 # Heating the system
 print("Heating ... ")

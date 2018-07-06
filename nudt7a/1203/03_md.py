@@ -6,60 +6,6 @@ import sys
 import pickle
 import duck
 
-###############################################################################
-
-def applyHarmonicPositionalRestraints(system, forceConstantInKcalPerMolePerAngSquared,
-                                      positions, indexOfAtomsToBeModified):
-    """ This is essentially mimicking AMBER's restraint_wt"""
-
-    forceConstant = u.Quantity(value=forceConstantInKcalPerMolePerAngSquared,
-               unit=u.kilocalorie/(u.mole * u.angstrom * u.angstrom))
-
-    force = mm.CustomExternalForce("k*((x-x0)^2+(y-y0)^2+(z-z0)^2)")
-
-    force.addGlobalParameter("k",
-       forceConstant.in_units_of(u.kilojoule/(u.mole * u.nanometer * u.nanometer )))
-
-    force.addPerParticleParameter("x0")
-    force.addPerParticleParameter("y0")
-    force.addPerParticleParameter("z0")
-
-    for i in indexOfAtomsToBeModified:
-        force.addParticle(i, positions[i])
-
-    system.addForce(force)
-
-
-def applyLigandChunkRestraint(system, k2, k3, R2, R3, R4, indexOfAffectedAtoms):
-    
-    forceConstant_k2 = u.Quantity(value=k2,
-               unit=u.kilocalorie/(u.mole * u.angstrom * u.angstrom))
-    forceConstant_k3 = u.Quantity(value=k3,
-               unit=u.kilocalorie/(u.mole * u.angstrom * u.angstrom))
-    
-    restraint_force = mm.CustomBondForce('step(R2 - r) * f1 + step(r - R3) * select( step(r - R4), f3, f2);'
-                                         'f1 = k2 * (r - R2)^2;'
-                                         'f2 = k3 * (r - R3)^2;'
-                                         'f3 = k3 * (R4 - R3) * (2 * r - R4 - R3)')
-    
-    restraint_force.addGlobalParameter("k2",
-       forceConstant_k2.in_units_of(u.kilojoule/(u.mole * u.nanometer * u.nanometer )))
-    restraint_force.addGlobalParameter("k3",
-       forceConstant_k3.in_units_of(u.kilojoule/(u.mole * u.nanometer * u.nanometer )))
-    
-    restraint_force.addGlobalParameter("R2", R2) 
-    restraint_force.addGlobalParameter("R3", R3)
-    restraint_force.addGlobalParameter("R4", R4)
-    
-    restraint_force.addBond(indexOfAffectedAtoms[0], indexOfAffectedAtoms[1])
-    
-    system.addForce(restraint_force)
-    
-
-###############################################################################    
-#################### Sym parameters ###########################################
-###############################################################################
-
 if len(sys.argv)!=5 :
   sys.exit("Usage 03_md.py in.chk out.chk out.csv out.pdb")
 
@@ -71,6 +17,13 @@ pickle_in.close()
 
 
 
+resnumber="29"
+atomname="O"
+distance="3.0"
+
+keyInteraction=duck.getAtomSerialFromAmberMask(combined_pmd,resnumber,atomname,distance)
+print(keyInteraction)
+
 checkpoint_in_file = sys.argv[1]
 checkpoint_out_file = sys.argv[2]
 csv_out_file = sys.argv[3]
@@ -80,14 +33,13 @@ traj_out_file = "traj.out" #sys.argv[5]
 MD_len = 1 * u.nanosecond
 sim_steps = round(MD_len / (0.002 * u.picosecond))
 
-keyInteraction_ind_mol2 = [453, 1329]
-keyInteraction = [keyInteraction_ind_mol2[0]-1, keyInteraction_ind_mol2[1]-1]
 
 
 # Platform definition
 
-platform = mm.Platform_getPlatformByName("CPU")
+platform = mm.Platform_getPlatformByName("OpenCL")
 platformProperties = {}
+platformProperties['OpenCLPrecision'] = 'mixed'
 
 
 
@@ -104,8 +56,8 @@ system = combined_pmd.createSystem(nonbondedMethod=app.PME, nonbondedCutoff=9*u.
 
 # Apply force on all havy atoms of chunk and apply restraint for the ligand-chunk distance
 
-applyHarmonicPositionalRestraints(system, 1.0, combined_pmd.positions, Chunk_Heavy_Atoms)
-applyLigandChunkRestraint(system, 1.0, 10.0, 2*u.angstrom, 3*u.angstrom, 4*u.angstrom, keyInteraction)
+duck.applyHarmonicPositionalRestraints(system, 0.5, combined_pmd.positions, Chunk_Heavy_Atoms)
+duck.applyLigandChunkRestraint(system, 1.0, 10.0, 2*u.angstrom, 3*u.angstrom, 4*u.angstrom, keyInteraction)
 
 
 # Integrator
@@ -123,6 +75,7 @@ simulation.loadCheckpoint(checkpoint_in_file)
 
 simulation.reporters.append(app.StateDataReporter(csv_out_file, 2000, step=True, time=True, totalEnergy=True, kineticEnergy=True, potentialEnergy=True, temperature=True, density=True, progress=True, totalSteps=250000, speed=True))
 #!#simulation.reporters.append(HDF5Reporter(traj_out_file, XXX))
+simulation.reporters.append(app.DCDReporter("md.dcd", 1000))
 
 
 # Production

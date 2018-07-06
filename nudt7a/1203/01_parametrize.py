@@ -203,7 +203,9 @@ combined_pmd = protein_pmd + ligand_pmd + ions_pmd + solvent_pmd
 combined_pmd.save("system_complex.prmtop", overwrite=True)
 print("merge done")
 combined_pmd.box_vectors = complex.box_vectors
-#print(complex.box_vectors)
+#combined_pmd.box[0]=box_size
+#combined_pmd.box[1]=box_size
+#combined_pmd.box[2]=box_size
 
 print("writing pickle")
 import pickle

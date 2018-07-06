@@ -1,5 +1,7 @@
 import simtk.openmm as mm
 import simtk.unit as u
+import parmed
+
 #!#from mdtraj.reporters import HDF5Reporter 
 
 
@@ -11,7 +13,8 @@ def applyHarmonicPositionalRestraints(system, forceConstantInKcalPerMolePerAngSq
     forceConstant = u.Quantity(value=forceConstantInKcalPerMolePerAngSquared,
                unit=u.kilocalorie/(u.mole * u.angstrom * u.angstrom))
 
-    force = mm.CustomExternalForce("k*((x-x0)^2+(y-y0)^2+(z-z0)^2)")
+    force = mm.CustomExternalForce("k*periodicdistance(x, y, z, x0, y0, z0)^2")
+
 
     force.addGlobalParameter("k",
        forceConstant.in_units_of(u.kilojoule/(u.mole * u.nanometer * u.nanometer )))
@@ -69,4 +72,23 @@ def getHeavyAtomsInSystem(combined_pmd):
         if atom_i.residue.name not in ('HOH', 'WAT', 'IP3', 'LIG', 'Cs+', 'K+', 'Rb+', 'Li+', 'Na+', 'IP', 'Cl-', 'IM', 'IB') and atom_i.name[0] != 'H':
             Chunk_Heavy_Atoms.append(atom_i.index)
     return(Chunk_Heavy_Atoms)
+
+def getCAAtomsInSystem(combined_pmd):
+    Chunk_Heavy_Atoms=[]
+    for atom_i in combined_pmd.topology.atoms():
+        if atom_i.residue.name not in ('HOH', 'WAT', 'IP3', 'LIG', 'Cs+', 'K+', 'Rb+', 'Li+', 'Na+', 'IP', 'Cl-', 'IM', 'IB') and atom_i.name[0] != 'CA':
+            Chunk_Heavy_Atoms.append(atom_i.index)
+    return(Chunk_Heavy_Atoms)
+
+
+def getAtomSerialFromAmberMask(combined_pmd,resnumber,atomname,distance,ligresname="LIG"):
+    lig_sel=parmed.amber.mask.AmberMask(combined_pmd,"(((:"+resnumber+")&(@"+atomname+"))<@3.0) & (:"+ligresname+" & (@N=|@O=))")
+    lig_idx=[x for x in lig_sel.Selected() ]
+    rec_sel=parmed.amber.mask.AmberMask(combined_pmd,"((:"+resnumber+")&(@"+atomname+"))")
+    rec_idx=[x for x in rec_sel.Selected() ]
+
+
+    if(len(lig_idx)>1 or len(rec_idx)>1) :
+      sys.exit("The reaction coordinate selection failed here, please consider setting it by hand")
+    return(rec_idx[0],lig_idx[0])
 

@@ -1,10 +1,11 @@
 #!/bin/bash
 source ~/.bash_profile
-
-for i in {1..20}
+python3 04_smd.py 300 md/md1.chk smd/out_300_1.csv smd/out_300_1.dat smd/out_300_1.pdb smd/out_300_1.dcd 
+python3 04_smd.py 325 md/md1.chk smd/out_325_1.csv smd/out_325_1.dat smd/out_325_1.pdb smd/out_325_1.dcd
+for i in {1..50}
   do
   	ni=$((i+1))
 	python3 03_md.py md/md${i}.chk md/md${ni}.chk md/md${ni}.csv md/md${ni}.pdb 
-	python3 04_smd.py 300 md/md${ni}.chk smd/out_300_${ni}.csv smd/out_300_${ni}.dat smd/out_300_${ni}.pdb smd/out_300_${ni}.dcd
+	python3 04_smd.py 300 md/md${ni}.chk smd/out_300_${ni}.csv smd/out_300_${ni}.dat smd/out_300_${ni}.pdb smd/out_300_${ni}.dcd 
 	python3 04_smd.py 325 md/md${ni}.chk smd/out_325_${ni}.csv smd/out_325_${ni}.dat smd/out_325_${ni}.pdb smd/out_325_${ni}.dcd
   done

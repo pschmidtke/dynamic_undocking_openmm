@@ -7,33 +7,8 @@ import sys
 import pickle
 import duck
 
-###############################################################################
 
-def applyHarmonicPositionalRestraints(system, forceConstantInKcalPerMolePerAngSquared,
-                                      positions, indexOfAtomsToBeModified):
-    """ This is essentially mimicking AMBER's restraint_wt"""
 
-    forceConstant = u.Quantity(value=forceConstantInKcalPerMolePerAngSquared,
-               unit=u.kilocalorie/(u.mole * u.angstrom * u.angstrom))
-
-    force = mm.CustomExternalForce("k*((x-x0)^2+(y-y0)^2+(z-z0)^2)")
-
-    force.addGlobalParameter("k",
-       forceConstant.in_units_of(u.kilojoule/(u.mole * u.nanometer * u.nanometer )))
-
-    force.addPerParticleParameter("x0")
-    force.addPerParticleParameter("y0")
-    force.addPerParticleParameter("z0")
-
-    for i in indexOfAtomsToBeModified:
-        force.addParticle(i, positions[i])
-
-    system.addForce(force)
-
-   
-###############################################################################    
-#################### Sym parameters ###########################################
-###############################################################################
 
 if len(sys.argv)!=7 :
   sys.exit("Usage 04_smd.py temperature in.chk out.csv out.dat out.pdb out.dcd")
@@ -49,7 +24,7 @@ pdb_out_file = sys.argv[5]
 traj_out_file = sys.argv[6]
 
 #keyInteraction_ind_mol2 = [453, 1329]
-keyInteraction = [453, 1329] #[keyInteraction_ind_mol2[0]-1, keyInteraction_ind_mol2[1]-1]
+#keyInteraction = [453, 1329] #[keyInteraction_ind_mol2[0]-1, keyInteraction_ind_mol2[1]-1]
 
 spring_k = 50 * u.kilocalorie/(u.mole * u.angstrom * u.angstrom)
 dist_in = 2.5 * u.angstrom # in angstrom 
@@ -61,9 +36,9 @@ velocity = 0.00001 * u.angstrom
 
 # Platform definition
 
-platform = mm.Platform_getPlatformByName("CPU")
+platform = mm.Platform_getPlatformByName("OpenCL")
 platformProperties = {}
-#platformProperties['CudaPrecision'] = 'mixed'
+platformProperties['OpenCLPrecision'] = 'mixed'
 #platformProperties['CudaDeviceIndex'] = '0'
 
 print("loading pickle")
@@ -73,9 +48,18 @@ print(combined_pmd)
 pickle_in.close()
 
 
+
+resnumber="29"
+atomname="O"
+distance="3.0"
+
+keyInteraction=duck.getAtomSerialFromAmberMask(combined_pmd,resnumber,atomname,distance)
+print(keyInteraction)
+
+
 # Get indexes of heavy atoms in chunk
 
-Chunk_Heavy_Atoms = duck.getHeavyAtomsInSystem(combined_pmd)
+Chunk_Heavy_Atoms = duck.getCAAtomsInSystem(combined_pmd)
 
 # Setting System
 
@@ -84,7 +68,7 @@ system = combined_pmd.createSystem(nonbondedMethod=app.PME, nonbondedCutoff=9*u.
 
 # Apply force on all havy atoms of chunk
 
-applyHarmonicPositionalRestraints(system, 1.0, combined_pmd.positions, Chunk_Heavy_Atoms)
+duck.applyHarmonicPositionalRestraints(system, 0.5, combined_pmd.positions, Chunk_Heavy_Atoms)
 
 
 # Integrator
@@ -141,13 +125,13 @@ pull_distance = velocity * steps_per_move
 # Reporters and duck.dat file
 
 simulation.reporters.append(app.StateDataReporter(csv_out_file, steps_per_move, step=True, time=True, totalEnergy=True, kineticEnergy=True, potentialEnergy=True, temperature=True, density=True, progress=True, totalSteps = steps_per_move * steps, speed=True))
-simulation.reporters.append(app.DCDReporter(traj_out_file, 100))
+simulation.reporters.append(app.DCDReporter(traj_out_file, 1000))
 f=open(dat_out_file,'w')
 
 
 # Production in N steps with the update every 200 steps (2 pm) 
 
-for i in range(steps):    
+for i in range(steps):
 
     # Get current state tu update the system
 
