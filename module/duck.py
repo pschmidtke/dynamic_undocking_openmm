@@ -1,7 +1,9 @@
 import simtk.openmm as mm
 import simtk.unit as u
 import parmed
-
+import parmed.geometry as g
+import sys
+import simtk.openmm.app as app
 #!#from mdtraj.reporters import HDF5Reporter 
 
 
@@ -81,14 +83,65 @@ def getCAAtomsInSystem(combined_pmd):
     return(Chunk_Heavy_Atoms)
 
 
-def getAtomSerialFromAmberMask(combined_pmd,resnumber,atomname,distance,ligresname="LIG"):
-    lig_sel=parmed.amber.mask.AmberMask(combined_pmd,"(((:"+resnumber+")&(@"+atomname+"))<@3.0) & (:"+ligresname+" & (@N=|@O=))")
+def getAtomSerialFromAmberMaskHbond(combined_pmd,resnumber,atomname,distance,ligresname="LIG"):
+    lig_sel=parmed.amber.mask.AmberMask(combined_pmd,"(((:"+resnumber+")&(@"+atomname+"))<@"+distance+") & (:"+ligresname+" & (@N=|@O=))")
     lig_idx=[x for x in lig_sel.Selected() ]
     rec_sel=parmed.amber.mask.AmberMask(combined_pmd,"((:"+resnumber+")&(@"+atomname+"))")
     rec_idx=[x for x in rec_sel.Selected() ]
 
 
-    if(len(lig_idx)>1 or len(rec_idx)>1) :
-      sys.exit("The reaction coordinate selection failed here, please consider setting it by hand")
-    return(rec_idx[0],lig_idx[0])
+    print(lig_idx,rec_idx)
+    
+    if len(rec_idx)==1 :
 
+        if(len(lig_idx)>1) :
+            mind=1000
+            minidx=lig_idx[0]
+            for idx in lig_idx:
+                d=g.distance2(combined_pmd[idx],combined_pmd[rec_idx[0]])
+                if d<mind:
+                    mind=d
+                    minidx=idx
+            return(rec_idx[0],minidx) 
+        else :
+            return(rec_idx[0],lig_idx[0])        
+        #sys.exit("The reaction coordinate selection failed here, please consider setting it by hand")
+    else :
+        sys.exit("Your receptor atom selection selected more than a single atom. PLease check your atom names or refine your selection")
+
+
+def getAtomSerialFromAmberMask(combined_pmd,resnumber,atomname,distance,ligresname="LIG"):
+    lig_sel=parmed.amber.mask.AmberMask(combined_pmd,"(((:"+resnumber+")&(@"+atomname+"))<@"+distance+") & (:"+ligresname+" & (@C=|@F=|@S=|@I=|@Br=|@Cl=))")
+    lig_idx=[x for x in lig_sel.Selected() ]
+    rec_sel=parmed.amber.mask.AmberMask(combined_pmd,"((:"+resnumber+")&(@"+atomname+"))")
+    rec_idx=[x for x in rec_sel.Selected() ]
+
+    print(lig_idx,rec_idx)
+    
+    if len(rec_idx)==1 :
+
+        if(len(lig_idx)>1) :
+            mind=1000
+            minidx=lig_idx[0]
+            for idx in lig_idx:
+                d=g.distance2(combined_pmd[idx],combined_pmd[rec_idx[0]])
+                if d<mind:
+                    mind=d
+                    minidx=idx
+            return(rec_idx[0],minidx) 
+        else :
+            return(rec_idx[0],lig_idx[0])        
+        #sys.exit("The reaction coordinate selection failed here, please consider setting it by hand")
+    else :
+        sys.exit("Your receptor atom selection selected more than a single atom. PLease check your atom names or refine your selection")
+    
+
+def setUpNPTEquilibration(system,combined_pmd,platform,platformProperties,positions,velocities):
+    system.addForce(mm.MonteCarloBarostat(1.0*u.bar, 300*u.kelvin))
+    integrator = mm.LangevinIntegrator(300*u.kelvin, 4/u.picosecond, 0.002*u.picosecond)
+
+    # Define simulation
+    simulation = app.Simulation(combined_pmd.topology, system, integrator, platform,platformProperties)
+    simulation.context.setPositions(positions)
+    simulation.context.setVelocities(velocities)
+    return(simulation)

@@ -24,11 +24,11 @@ hbond=sys.argv[4]
 
 # Platform definition
 
-platform = mm.Platform_getPlatformByName("OpenCL")
+platform = mm.Platform_getPlatformByName("CPU")
 
 
 platformProperties = {}
-platformProperties['OpenCLPrecision'] = 'mixed'
+#platformProperties['OpenCLPrecision'] = 'mixed'
 #platformProperties['UseCpuPme'] = 'false'
 #platformProperties['DisablePmeStream'] = 'true'
 #platformProperties['CudaDeviceIndex'] = '0'
@@ -163,26 +163,68 @@ simulation.reporters = []
 ##########################
 ##########################
 
+simulation = duck.setUpNPTEquilibration(system,combined_pmd,platform,platformProperties,positions,velocities)
+# Reporters
+
+simulation.reporters.append(app.StateDataReporter("density.csv", 1000, time=True, potentialEnergy=True, temperature=True, density=True, remainingTime=True, speed=True, totalSteps=50000))
+
+# Correcting the density
+print("Correcting density CPU")
+
+simulation.step(10000) # 0.01 ns
+
+# Save the positions and velocities
+positions = simulation.context.getState(getPositions=True).getPositions()
+velocities = simulation.context.getState(getVelocities=True).getVelocities()
+app.PDBFile.writeFile(simulation.topology, positions, open('density_final.pdb', 'w'))
+
+
+
+
+
+
+platform = mm.Platform_getPlatformByName("OpenCL")
+
+
+platformProperties = {}
+platformProperties['OpenCLPrecision'] = 'mixed'
+#platformProperties['UseCpuPme'] = 'false'
+#platformProperties['DisablePmeStream'] = 'true'
+#platformProperties['CudaDeviceIndex'] = '0'
+
+
+
+simulation.reporters = []
+
+##########################
+##########################
+# Equlibration - density #
+##########################
+##########################
+
 # Add barostat to the system
 
-system.addForce(mm.MonteCarloBarostat(1.0*u.bar, 300*u.kelvin))
+#system.addForce(mm.MonteCarloBarostat(1.0*u.bar, 300*u.kelvin))
 
 # Integrator 
 
-integrator = mm.LangevinIntegrator(300*u.kelvin, 4/u.picosecond, 0.002*u.picosecond)
+#integrator = mm.LangevinIntegrator(300*u.kelvin, 4/u.picosecond, 0.002*u.picosecond)
 
 # Define simulation
 
-simulation = app.Simulation(combined_pmd.topology, system, integrator, platform,platformProperties)
-simulation.context.setPositions(positions)
-simulation.context.setVelocities(velocities)
+#simulation = app.Simulation(combined_pmd.topology, system, integrator, platform,platformProperties)
+#simulation.context.setPositions(positions)
+#simulation.context.setVelocities(velocities)
+
+
+simulation = duck.setUpNPTEquilibration(system,combined_pmd,platform,platformProperties,positions,velocities)
 
 # Reporters
 
 simulation.reporters.append(app.StateDataReporter("density.csv", 1000, time=True, potentialEnergy=True, temperature=True, density=True, remainingTime=True, speed=True, totalSteps=50000))
 
 # Correcting the density
-print("Correcting density")
+print("Correcting density OpenCL")
 
 simulation.step(5000) # 0.01 ns
 
@@ -190,6 +232,7 @@ simulation.step(5000) # 0.01 ns
 positions = simulation.context.getState(getPositions=True).getPositions()
 velocities = simulation.context.getState(getVelocities=True).getVelocities()
 app.PDBFile.writeFile(simulation.topology, positions, open('density_final.pdb', 'w'))
+
 
 #saving simulation stage
 simulation.saveCheckpoint('equil.chk')
